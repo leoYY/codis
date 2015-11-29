@@ -59,6 +59,17 @@ func NewSessionSize(c net.Conn, auth string, bufsize int, timeout int) *Session 
 	return s
 }
 
+func (s *Session) Reset(c net.Conn, timeout int) {
+	s.Conn.Reset(c)
+	s.CreateUnix = time.Now().Unix()
+	s.quit = false
+	s.failed.Set(false)
+	s.closed.Set(false)
+	s.Conn.ReaderTimeout = time.Second * time.Duration(timeout)
+	s.Conn.WriterTimeout = time.Second * 30
+	log.Info("session [%p] reused: %s", s, s)
+}
+
 func (s *Session) Close() error {
 	return s.Conn.Close()
 }

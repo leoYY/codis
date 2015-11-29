@@ -39,6 +39,14 @@ func NewConnSize(sock net.Conn, bufsize int) *Conn {
 	return conn
 }
 
+func (c *Conn) Reset(sock net.Conn) {
+	c.Sock = sock
+	c.Reader.Reset(&connReader{Conn: c})
+	c.Reader.Err = nil
+	c.Writer.Reset(&connWriter{Conn: c})
+	c.Writer.Err = nil
+}
+
 func (c *Conn) Close() error {
 	return c.Sock.Close()
 }

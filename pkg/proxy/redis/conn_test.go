@@ -15,6 +15,18 @@ import (
 	"github.com/wandoulabs/codis/pkg/utils/errors"
 )
 
+var (
+	connPool	*sync.Pool
+)
+
+func init() {
+	connPool = &sync.Pool{
+		New: func() interface{} {
+			return nil
+		},
+	} 
+}
+
 func newConnPair() (*Conn, *Conn) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	assert.MustNoError(err)
@@ -30,7 +42,13 @@ func newConnPair() (*Conn, *Conn) {
 			if err != nil {
 				return
 			}
-			cc <- NewConnSize(c, bufsize)
+			x, ok := connPool.Get().(*Conn)
+			if !ok || x == nil {
+				cc <- NewConnSize(c, bufsize)
+			} else {
+				x.Reset(c)
+				cc <- x
+			}
 		}
 	}()
 
@@ -46,6 +64,9 @@ func TestConnReaderTimeout(t *testing.T) {
 	resp := NewString([]byte("hello world"))
 
 	conn1, conn2 := newConnPair()
+	defer func() {
+		connPool.Put(conn2)
+	}()
 
 	var wg sync.WaitGroup
 
@@ -90,6 +111,9 @@ func TestConnWriterTimeout(t *testing.T) {
 	resp := NewString([]byte("hello world"))
 
 	conn1, conn2 := newConnPair()
+	defer func() {
+		connPool.Put(conn2)
+	}()
 
 	var wg sync.WaitGroup
 

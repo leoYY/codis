@@ -38,6 +38,7 @@ type Server struct {
 	kill chan interface{}
 	wait sync.WaitGroup
 	stop sync.Once
+	sessionPool *sync.Pool
 }
 
 func New(addr string, debugVarAddr string, conf *Config) *Server {
@@ -76,6 +77,11 @@ func New(addr string, debugVarAddr string, conf *Config) *Server {
 	}
 	s.router = router.NewWithAuth(conf.passwd)
 	s.evtbus = make(chan interface{}, 1024)
+	s.sessionPool = &sync.Pool{
+		New: func() interface{} {
+			return nil
+		},
+	}
 
 	s.register()
 
@@ -132,8 +138,16 @@ func (s *Server) handleConns() {
 
 	go func() {
 		for c := range ch {
-			x := router.NewSessionSize(c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
-			go x.Serve(s.router, s.conf.maxPipeline)
+			x, ok := s.sessionPool.Get().(*router.Session)
+			if !ok || x == nil {
+				x = router.NewSessionSize(c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
+			} else {
+				x.Reset(c, s.conf.maxTimeout)
+			}
+			go func() {
+				x.Serve(s.router, s.conf.maxPipeline)
+				s.sessionPool.Put(x)
+			}()
 		}
 	}()
 
