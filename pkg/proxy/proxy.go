@@ -142,7 +142,7 @@ func (s *Server) handleConns() {
 			if !ok || x == nil {
 				x = router.NewSessionSize(c, s.conf.passwd, s.conf.maxBufSize, s.conf.maxTimeout)
 			} else {
-				x.Reset(c, s.conf.maxTimeout)
+				x.Reset(c, s.conf.passwd, s.conf.maxTimeout)
 			}
 			go func() {
 				x.Serve(s.router, s.conf.maxPipeline)
