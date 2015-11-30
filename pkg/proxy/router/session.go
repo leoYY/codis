@@ -59,9 +59,13 @@ func NewSessionSize(c net.Conn, auth string, bufsize int, timeout int) *Session 
 	return s
 }
 
-func (s *Session) Reset(c net.Conn, timeout int) {
+func (s *Session) Reset(c net.Conn, auth string, timeout int) {
 	s.Conn.Reset(c)
+	s.Ops = 0
 	s.CreateUnix = time.Now().Unix()
+	s.LastOpUnix = 0
+	s.auth = auth
+	s.authorized = false
 	s.quit = false
 	s.failed.Set(false)
 	s.closed.Set(false)
